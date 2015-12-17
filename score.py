@@ -1,8 +1,32 @@
 #!/usr/bin/parallel --shebang-wrap python
-from pbswriter import *
+from pbswriter import PBS
+from unidecorator import *
 
-class Score(PBS):
+#@universal
+
+#class Test(PBS):
+#    def __init__(self,data='126L_AGTCAA_L006_R1_001.fastq_head_1000', pbs='126L', log='126LLog', home='.'):
+#        self.data=data
+#        self.pbs=pbs
+#        self.log=log
+#        self.home=home
+#        #super(Test, self).__init__()
+#        #self.test_fnc = test_fnc
+#        #self.test_writePBS = 
+#
+#    def __call__(self,obj):
+#        def wrap():
+#            obj.DATA=self.data
+#            obj.PBSFILE=self.pbs
+#            obj.LOGFILE=self.log
+#            obj.writePBS(self.home)
+#        return wrap
+#
+
+@universal
+class Score(object):
     def __init__(self,fastqreads,id):
+        super(Score, self).__init__()
         self.coverageMax = None
         self.strucVarMax = None
         self.fastqreads = fastqreads
@@ -21,12 +45,12 @@ class Score(PBS):
         '''
         pass
     #scoring functions
-    def coverageN50(self,out=output+'/Trinity.fasta'):
-        pass
+    #def coverageN50(self,out=PBS.OUTPUTDIR+'/Trinity.fasta'):
+    #    pass
     def structVar(self):
         pass
     
-    def ssOptRange(self, range):
+    def optRange(self, range):
         ''' given range, returns optN size for worst-case optimization
             based on integer series sum n+(n+1)+...(n+i)=X, where optimal selection increases by 1 for each iteration of search
             opt range is (n^2+n)/2=X
@@ -39,7 +63,7 @@ class Score(PBS):
         return optbranch
 
     #recursive opt function
-    def opttree(self, branch=None, range=[1,15], theta='kmer'):
+    def optTree(self, branch=None, range=[1,15], theta='kmer'):
         '''return score value 
            theta is parameters, either kmer or quality
         '''
@@ -64,7 +88,8 @@ class Score(PBS):
             if score < self.coverageMax:
                 right=xrange( branch[0], branch[1] ) #increment of 1 between last and curr range
                 return opttree(branch=right)
-
+    #average over reads for a theta
+    #possible thetas are kmer, trimmomatic, normalization
 
 #make dir structure
     
