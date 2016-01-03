@@ -1,38 +1,39 @@
 #!/usr/bin/parallel --shebang-wrap python
 from pbswriter import PBS
 from unidecorator import *
+import itertools
+import HTSeq
 
-#@universal
-
-#class Test(PBS):
-#    def __init__(self,data='126L_AGTCAA_L006_R1_001.fastq_head_1000', pbs='126L', log='126LLog', home='.'):
-#        self.data=data
-#        self.pbs=pbs
-#        self.log=log
-#        self.home=home
-#        #super(Test, self).__init__()
-#        #self.test_fnc = test_fnc
-#        #self.test_writePBS = 
-#
-#    def __call__(self,obj):
-#        def wrap():
-#            obj.DATA=self.data
-#            obj.PBSFILE=self.pbs
-#            obj.LOGFILE=self.log
-#            obj.writePBS(self.home)
-#        return wrap
-#
+# downstream analysis steps
 
 @universal
 class Score(object):
-    def __init__(self,fastqreads,id):
-        super(Score, self).__init__()
+    CMD=[]
+    def __init__(self, function=None):
+        #super(Score, self).__init__()
         self.coverageMax = None
         self.strucVarMax = None
         self.fastqreads = fastqreads
         self.range = None
         self.optN = None
-    #run pip functions
+        #self.OUTPUTDIR=PBS.OUTPUTDIR
+        self.function=function
+
+    def __call__(self,*args,**kwargs):
+        CMD.append(self.function(*args,**kwargs))
+        @classmethod
+        def f():
+            self.function(*args,**kwargs)
+
+    def __repr__(self):
+        '''print all functions'''
+        cmd = ' '.join(CMD,)
+        slf = ' '.join(['coverageN50', 'isoform_cufflinks'])
+        print cmd + slf
+            
+       
+
+    # - pipe functions
     def qsubcmd(self, program, theta):
         '''return cmd string of PBS file
            parallel <program> <parameters>
@@ -44,12 +45,135 @@ class Score(object):
         ''' write PBS file
         '''
         pass
-    #scoring functions
-    #def coverageN50(self,out=PBS.OUTPUTDIR+'/Trinity.fasta'):
-    #    pass
-    def structVar(self):
+
+    def coverage_wig(input,type=None,output=None):
+        ''' read coverage vector => wig graph
+        '''
+        if type==None:
+            type=input[-3:].upper()
+            print type
+        intype={'SAM': HTSeq.SAM_Reader(input),
+                'BAM': HTSeq.BAM_Reader(input)
+                }
+        align_file = intype[type]
+        # SequenceWithQualities obj class; slots aln,iv
+        # coverage
+        # auto add chromosome vectors as needed
+        # stranded two vectors per chrom
+        coverage = HTSeq.GenomicArray( "auto", stranded=True, typecode='i' )
+        for alngt in itertools.islice(align_file,10):
+            if alngt.aligned:
+                #print 'aligned'
+                coverage[ alngt.iv ] += 1
+        print 'COVER', coverage
+        #wiggle graph .bed
+        if output==None:
+            oplus=type+'plus.wig'
+            ominus=type+'minus.wig'
+        else:
+            oplus=output+'plus.wig'
+            ominus=output+'minus.wig'
+        coverage.write_bedgraph_file(oplus, '+')
+        coverage.write_bedgraph_file( ominus, '-')
+
+
+    def genes_reads(annot, align, type=None):
+        ''' count read by gene
+            exon overlapped by read
+            GenomicArrayOfSets
+            /export/home/gsingh6/cow/cow.gtf.gz'
+        '''
+        if type==None:
+            type=align[-3:].upper()
+            #print type
+        intype={'SAM': HTSeq.SAM_Reader(align),
+                'BAM': HTSeq.BAM_Reader(align)
+                }
+        align_file = intype[type]
+        # test end included if mod3 not equal 0
+        gtf_file=HTSeq.GFF_Reader(annot, end_included=True)
+        # exons #objects of class GenomicFeature
+        exons = HTSeq.GenomicArrayOfSets( "auto", stranded=True )
+        for feature in itertools.islice(gtf_file,5000):
+            if feature.type=='exon':
+                exons[feature.iv]+=feature.name
+        # ** interval search,range **
+        interval = HTSeq.GenomicInterval( "chr1", 151377661, 151490311, "+" )
+        #print list( exons[interval].steps() )
+        # intersection set ; multiple gene/features/steps() to read 
+        # counts dict init with gene names
+        counts = {}
+        for feature in gtf_file:
+            if feature.type == "exon":
+                counts[ feature.name ] = 0
+        # list(iset)[0] from intersection set of exons(over interval) with SAM file
+        for alnmt in itertools.islice(align_file,1000):
+            if alnmt.aligned:
+                iset = None
+                for iv2, step_set in exons[ alnmt.iv ].steps():
+                    if iset is None:
+                        iset = step_set.copy()
+                    else:
+                        iset.intersection_update( step_set )
+                if len( iset ) == 1:
+                    counts[ list(iset)[0] ] += 1
+        for name in sorted(counts.keys()):
+            if counts[name]>0:
+                print( name, counts[name])
+        for k,v in counts.items():
+            print k,v
+
+    #htseq-count (counts per gene)
+    #htseq-qa
+
+    # - scoring functions
+    def coverageN50(self,assemblyfile):  #,out=self.OUTPUTDIR+'/Trinity.fasta'):
+        ''' median of cumsum contig length
+        order the contigs by length
+        cdf
+        cdf(totalsum/2)
+        create a annotation file from Trinity.fasta, as scaffold to coding region
+        https://github.com/trinityrnaseq/trinityrnaseq/wiki/Transcriptome%20Contig%20Nx%20and%20ExN50%20stats
+        '''
+        lens = [(s.name,len(s)) for s in HTSeq.FastaReader(assemblyfile)]
+        sl=sorted(lens, key=lambda x,y:y)
+        index=0
+        for i,s in enumerate(sl):
+            sm=sum(sl[0:i])
+            if sm> total:
+                print '*',i,sum(sl[0:i])
+                index=i
+                break
+        n50=sl[index]
+        #can output a graph perhaps with binned sums on x-axis and y-axis is the names of contigs in that bin
+        return n50
+
+        
+        
+    def isoform_cufflinks(self):
+        ''' isoform count cufflinks => fpkm (anova-test) <hits.sam>
+            -u multireadcorrect
+            -b bias correct (ref fasta)
+            -p cpus 
+        '''
+        cufflinks = 'cufflinks -u -b ' + reffasta + ' -p ' + cpus + ' -o ' + ' -GTF ' + gtf
+        
+        
+    def exons_DEXSeq(self):
+        ''' count reads/exon =>
+        '''
         pass
-    
+    def kmer_sailfish(self):
+        ''' coverage without align in min using kmer
+            => %kmer mapped
+        '''
+        pass
+        
+
+
+
+
+    # - pipeline optimization functions 
     def optRange(self, range):
         ''' given range, returns optN size for worst-case optimization
             based on integer series sum n+(n+1)+...(n+i)=X, where optimal selection increases by 1 for each iteration of search
