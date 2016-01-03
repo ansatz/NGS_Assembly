@@ -86,7 +86,7 @@ class PBS(object):
                     LOGFILE=None,\
                     cowref='/export/home/gsingh6/cow/cow.gtf.gz', cowgtf=None,\
                     assemblytype=None,scoretype=None,genometype=None,\
-                    output=[],optpipe=None):
+                    outputs=[],inputs=[],optpipe=None):
         wraps(function_cmd)(self)
         #--pbs
         self.QUEUENAME   = QUEUENAME
@@ -112,10 +112,12 @@ class PBS(object):
         self.optpipe        = optpipe #pass this to Opt class, shallow copy
         self.Labels         = []
         self.graphdict      = None
+        self.iodict         = defaultdict(dict)
 
         #--data
         self.OUTPUTDIR      = OUTPUTDIR
-        self.output         = output
+        self.outputs        = outputs
+        self.inputs         = inputs
         self.DATA           = read_pair
         self.cow            = cowref         
         self.gtf            = cowgtf
@@ -127,13 +129,20 @@ class PBS(object):
         self.params=dict(group=['denovo','align'], theta=['kmer','qual'])
         self.var= vars(self)
 
-
     def __call__(self,*args,**kwargs):
         args = OrderedDict(self.function_cmd(*args,**kwargs))
         self.graphdict = args
         for k,v in args.items():
             self.Labels.append(k)
             self.CMD.append(v)
+
+    def io(self,outfile=None,infile=None,label=str,line=int ):
+        if outfile:
+            self.outputs.append(outfile)
+            self.iodict[label]={'outfile':[outfile,line]}
+        if infile: 
+            self.inputs.append(infile)
+            self.iodict[label]={'infile':[infile,line]}
 
     def once(self,cmd):
         '''remove cmd from Opt class, only present in PBS class
@@ -242,27 +251,49 @@ class PBS(object):
             fp.write(pbs)
 
     def dotplot(self,file):
-        C=AGraph()
+        C=AGraph(directed=True)
         addedge=lambda x,y: C.add_edge(x,y)
         lastnode=None
+        #flatten
         flatlist=[]
-        
         for k,v in self.graphdict.items():
+            print 'graphdict', k,v
             flatlist.append(k)
             if isinstance(v,basestring):
                 flatlist.append(v)
             elif isinstance(v,list):
                 for vv in v:
                     flatlist.append(vv)
-
+        #cmds
         for i in xrange(0,len(flatlist)-1):
             C.add_edge( flatlist[i], flatlist[i+1] )
-
+        #io
+        for label,v in self.iodict.items():
+            for iokey,(iofile,line) in v.items():
+                cmd = self.graphdict[label]
+                if isinstance(cmd,Iterable) and not isinstance(cmd,basestring):
+                    cmd=cmd[line]
+                node = C.get_node( cmd )
+                print 'node', node, iokey
+                #output/right
+                if iokey=='outfile':
+                    C.add_edge( node, iofile, dir='forward' )
+                #input/left
+                if iokey=='infile':
+                    print 'infile', iokey
+                    C.add_edge( node, iofile, dir='back' )
+                print C.edges()
+                nodeio = C.get_node( iofile)
+                nodeio.attr['shape']='rect'
+                nodeio.attr['fontcolor']='green'
+                print 'nodeio', nodeio
+        #labels
         for k,v in self.graphdict.items():
             nodek = C.get_node(k)
             nodek.attr['shape']='rect'
             #node.attr['pos']="%f,%f!"%()
             nodek.attr['fontcolor']='red'
+
         C.draw(file+'.png',prog='dot')
 
 
@@ -336,11 +367,11 @@ def mark(obj):
 #        return wrap
 #    return dec
 
-def output(PBS,*args,**kwargs):
-    def wrap(*args,**kwargs):
-        PBS._output(*args,n=None)
-        return PBS(*args,**kwargs)
-    return wrap
+#def output(PBS,*args,**kwargs):
+#    def wrap(*args,**kwargs):
+#        PBS._output(*args,n=None)
+#        return PBS(*args,**kwargs)
+#    return wrap
 
 
 

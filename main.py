@@ -72,14 +72,21 @@ cufflinks.writePBS(home=os.getcwd())
 @PBS
 def test():
     l='test'
-    c="testc"
-    return {l:c}
+    c="testc $outputs"
+    l0='label2'
+    c1='runner of cmds $outputs'
+    c2='run cmd run'
+    return [(l,c),(l0,[c1,c2])]
 test()
+test.io(outfile='test2.txt',label='test',line=0)
+test.io(outfile='cmdrunner', label='label2', line=0)
+test.io(infile='cmdinput', label='label2', line=1)
 test.writePBS(home='/home/solver/NGS_Assembly')
-test.once('testc')
-test.output=['test.txt']
-print test.output
+#test.once('testc')
+print test.outputs
 print test.CMD
+print test.outputs
+print test.iodict
 
 @PBS
 def detonate():
@@ -91,7 +98,7 @@ def detonate():
     u0='cd /export/home/gsingh6/detonate-1.10'
 
     L1='prior refgenome mean,std len'
-    u1='rsem-eval-estimate-transcript-length-distribution $cow $output'
+    u1='rsem-eval-estimate-transcript-length-distribution $cow $outputs[0]'
     
     L2='rsem-eval'
     # --args [reads] [assembly] [output-prefix] [avg paired fragment len] [prior distribution params] [-p threads]
@@ -118,12 +125,12 @@ def detonate():
     # -- now compute the contig and nucleotide scores
     c15='ref-eval --scores contig,nucl --weighted no --A-seqs examples/toy_assembly_1.fa --B-seqs examples/ta_0.fa --A-to-B examples/toy_assembly_1_to_ta_0.psl --B-to-A examples/ta_0_to_toy_assembly_1.psl --min-frac-identity 0.90 | tee examples/contig_nucl_1.txt' 
     
-    #return {L0:u0, L1:[u1], L2:[c3], L4:[u5,u6],L8:[u9,u10,c11], L9:[u13,u14,c15]}
     return [(L0,u0), (L1,[u1]), (L2,[c3]), (L4,[u5,u6]), (L8,[u9,u10,c11]), (L9,[u13,u14,c15]) ]
 
 detonate()  
 detonate.once('rsem-eval-estimate-transcript-length-distribution $cow $output')
 detonate.writePBS(home='/home/solver/NGS_Assembly')
+#detonate.io(infile='cow.txt')
 #detonate.testremote()  
 exit(0)
  
@@ -284,6 +291,12 @@ def chado():
  norvig (heat map of scores)
 
  linear model
+
+1.output
+2.cluster graphsub
+3.parse score file
+4.optree
+5.groups synthetic
 '''
 Optpipe = Opt(pairs,Scoring)
 print Optpipe.__repr__ # print rounds, graphviz_stats, 
