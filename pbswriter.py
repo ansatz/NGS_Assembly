@@ -102,7 +102,7 @@ class PBS(object):
             self.JOBNAME = JOBNAME
         else: 
             self.JOBNAME = self.name
-        if LOGFILE:
+        if LOGFILE: 
             self.LOGFILE     = LOGFILE
         else:
             self.LOGFILE = self.name +'log'
@@ -127,6 +127,7 @@ class PBS(object):
         self.params=dict(group=['denovo','align'], theta=['kmer','qual'])
         self.var= vars(self)
 
+
     def __call__(self,*args,**kwargs):
         args = OrderedDict(self.function_cmd(*args,**kwargs))
         self.graphdict = args
@@ -141,15 +142,6 @@ class PBS(object):
         opt= [ i for i in cflat if i != cmd]
         self.optpipe = deepcopy(opt)
     
-    def output(self,*args,**kwargs):
-        '''append PBS.output at index n, mod string to output[n]
-        '''
-        if isinstance(args, Iterable):
-            for s in args:
-                self.output.append(s)
-        elif n != None:
-            self.output[n]=output
-
 
     def testremote(self):
         '''/TestCmds/126L_AGTCAA_L006_R1_001.fastq_head  126L_AGTCAA_L006_R1_001.fastq_head_1000 

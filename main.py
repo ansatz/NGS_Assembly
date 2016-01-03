@@ -77,6 +77,8 @@ def test():
 test()
 test.writePBS(home='/home/solver/NGS_Assembly')
 test.once('testc')
+test.output=['test.txt']
+print test.output
 print test.CMD
 
 @PBS
