@@ -75,7 +75,9 @@ def test():
     c="testc"
     return {l:c}
 test()
-
+test.writePBS(home='/home/solver/NGS_Assembly')
+test.once('testc')
+print test.CMD
 
 @PBS
 def detonate():
@@ -118,14 +120,10 @@ def detonate():
     return [(L0,u0), (L1,[u1]), (L2,[c3]), (L4,[u5,u6]), (L8,[u9,u10,c11]), (L9,[u13,u14,c15]) ]
 
 detonate()  
-#detonate.once('rsem-eval-estimate-transcript-length-distribution $cow $output[0]')
-
-print '**main**'
-#print detonate.optpipe
-#print detonate.CMD[:3]
+detonate.once('rsem-eval-estimate-transcript-length-distribution $cow $output')
 detonate.writePBS(home='/home/solver/NGS_Assembly')
 #detonate.testremote()  
-
+exit(0)
  
 #http://informatics.fas.harvard.edu/rna-seq-data-analysis-2/
 #
@@ -272,16 +270,25 @@ def chado():
     return {L1:[c1], L2:[c2,c3,c4,c5]}
 
 
-exit(0)
 # --parallel over score, genome, assembly
-Scoring = Score()
-print Scoring.__repr__ # print score cmds, input{read_pairs Trinity.fasta} | output{gff sam etc}
+##Scoring = Score()
+##print Scoring.__repr__ # print score cmds, input{read_pairs Trinity.fasta} | output{gff sam etc}
+#TODO
+'''
+ run qsub pbs
+ timeit decorator
+ get score_value (detonate)<= inputs
+ opt-tree (params)
+ norvig (heat map of scores)
+
+ linear model
+'''
 Optpipe = Opt(pairs,Scoring)
 print Optpipe.__repr__ # print rounds, graphviz_stats, 
 
 
 Optpipe.run()
-optpipe.test()
+Optpipe.test()
 Optpipe.html(minutes=15)
 
 '''

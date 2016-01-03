@@ -171,8 +171,6 @@ class Score(object):
         
 
 
-
-
     # - pipeline optimization functions 
     def optRange(self, range):
         ''' given range, returns optN size for worst-case optimization

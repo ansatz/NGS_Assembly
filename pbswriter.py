@@ -83,7 +83,7 @@ class Opt(object):
 class PBS(object):
     def __init__(self, function_cmd, read_pair=None,\
                     QUEUENAME="cri", NODES=1, CPU=5, PBSFILE=None, WALL='24:00:00', JOBNAME=None, CALLDIR=None, OUTPUTDIR=None,\
-                    LOGFILE=None, CMD=[],\
+                    LOGFILE=None,\
                     cowref='/export/home/gsingh6/cow/cow.gtf.gz', cowgtf=None,\
                     assemblytype=None,scoretype=None,genometype=None,\
                     output=[],optpipe=None):
@@ -93,7 +93,7 @@ class PBS(object):
         self.NODES       = NODES
         self.CPU         = CPU
         self.WALL        = WALL
-        self.name=function_cmd.__name__
+        self.name        = function_cmd.__name__
         if PBSFILE: 
             self.PBSFILE=PBSFILE
         else: 
@@ -106,9 +106,9 @@ class PBS(object):
             self.LOGFILE     = LOGFILE
         else:
             self.LOGFILE = self.name +'log'
+
         self.CALLDIR     = CALLDIR
-        
-        self.CMD            = CMD
+        self.CMD            = []
         self.optpipe        = optpipe #pass this to Opt class, shallow copy
         self.Labels         = []
         self.graphdict      = None
@@ -130,7 +130,6 @@ class PBS(object):
     def __call__(self,*args,**kwargs):
         args = OrderedDict(self.function_cmd(*args,**kwargs))
         self.graphdict = args
-        print '***', self.graphdict
         for k,v in args.items():
             self.Labels.append(k)
             self.CMD.append(v)
@@ -138,10 +137,9 @@ class PBS(object):
     def once(self,cmd):
         '''remove cmd from Opt class, only present in PBS class
         '''
-        self.optpipe= [ i for i in self.CMD if cmd == cmd]
-        print 'once **'
-        print len(self.optpipe)
-        print len(self.CMD)
+        cflat=self.flatten(self.CMD)
+        opt= [ i for i in cflat if i != cmd]
+        self.optpipe = deepcopy(opt)
     
     def output(self,*args,**kwargs):
         '''append PBS.output at index n, mod string to output[n]
@@ -205,6 +203,7 @@ class PBS(object):
                     yield subc
             else:
                 yield i 
+
     def writePBS(self, home='/export/home/gsingh6',local=None,test=False,opt=False):
         #if opt==True:
         #    commands=deepcopy(self.optpipe)
@@ -220,7 +219,7 @@ class PBS(object):
         else:
             _QUEUE       = '#PBS -q ' + str(self.QUEUENAME)
             _OUTPUTDIR   = self.OUTPUTDIR
-            self.CMD.append('source /export/home/gsingh6/.bashrc')
+            _SRCBASHRC   = 'source /export/home/gsingh6/.bashrc'
 
         _NODES       = '#PBS -l nodes=' + str(self.NODES) + ':ppn=' + str(self.CPU)
         _WALL        = '#PBS -l walltime='+ str(self.WALL)
@@ -236,11 +235,10 @@ class PBS(object):
             else:
                 _PBSFILE     = home+'/pbsfiles/' + str(self.PBSFILE)
                 _LOGFILE     = '#PBS -o ' + ''.join([home,'/pbslog/',self.LOGFILE ])
-        print 'test**', self.CMD[:3]
         cflat=self.flatten(self.CMD)
         ctemp=[ Template(c).substitute(self.var) for c in cflat ]
         _CMD='\n'.join(ctemp)
-        pbslist = [_HASHBANG,_JOBNAME,_QUEUE,_NODES,_WALL,_OUTPUT,_LOGFILE,_OUTPUTDIR,_CMD]
+        pbslist = [_HASHBANG,_JOBNAME,_QUEUE,_NODES,_WALL,_OUTPUT,_LOGFILE,_OUTPUTDIR,_SRCBASHRC,_CMD]
         if not _OUTPUTDIR:
             pbslist.pop(7)
         else:
