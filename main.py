@@ -72,22 +72,22 @@ cufflinks.writePBS(home=os.getcwd())
 @PBS
 def test():
     l='test'
-    c="testc $outputs"
+    c="testc $inputs $outputs"
     l0='label2'
     c1='runner of cmds $outputs'
-    c2='run cmd run'
+    c2='run cmd run $outputs'
     return [(l,c),(l0,[c1,c2])]
 test()
 test.io(outfile='test2.txt',label='test',line=0)
-test.io(outfile='cmdrunner', label='label2', line=0)
-test.io(infile='cmdinput', label='label2', line=1)
+test.io(infile='cmdinput1', label='test', line=0)
+
+test.io(outfile='cmdrunnerout0', label='label2', line=0)
+test.io(outfile='cmdrunnerout', label='label2', line=1)
+
 test.writePBS(home='/home/solver/NGS_Assembly')
 #test.once('testc')
-print test.outputs
-print test.CMD
-print test.outputs
-print test.iodict
 
+exit(0)
 @PBS
 def detonate():
     '''http://deweylab.biostat.wisc.edu/detonate/vignette.html
@@ -98,7 +98,7 @@ def detonate():
     u0='cd /export/home/gsingh6/detonate-1.10'
 
     L1='prior refgenome mean,std len'
-    u1='rsem-eval-estimate-transcript-length-distribution $cow $outputs[0]'
+    u1='rsem-eval-estimate-transcript-length-distribution $cow $outputs'
     
     L2='rsem-eval'
     # --args [reads] [assembly] [output-prefix] [avg paired fragment len] [prior distribution params] [-p threads]

@@ -82,7 +82,7 @@ class Opt(object):
 @universal
 class PBS(object):
     def __init__(self, function_cmd, read_pair=None,\
-                    QUEUENAME="cri", NODES=1, CPU=5, PBSFILE=None, WALL='24:00:00', JOBNAME=None, CALLDIR=None, OUTPUTDIR=None,\
+                     QUEUENAME="cri", NODES=1, CPU=5, PBSFILE=None, WALL='24:00:00', JOBNAME=None, CALLDIR=None, OUTPUTDIR=None,\
                     LOGFILE=None,\
                     cowref='/export/home/gsingh6/cow/cow.gtf.gz', cowgtf=None,\
                     assemblytype=None,scoretype=None,genometype=None,\
@@ -112,7 +112,9 @@ class PBS(object):
         self.optpipe        = optpipe #pass this to Opt class, shallow copy
         self.Labels         = []
         self.graphdict      = None
-        self.iodict         = defaultdict(dict)
+        #self.iodict         = defaultdict(dict)
+        self.iodictout      = defaultdict(list)
+        self.iodictin       = defaultdict(list)
 
         #--data
         self.OUTPUTDIR      = OUTPUTDIR
@@ -137,12 +139,15 @@ class PBS(object):
             self.CMD.append(v)
 
     def io(self,outfile=None,infile=None,label=str,line=int ):
+        #2 dicts of lists of tuples
         if outfile:
             self.outputs.append(outfile)
-            self.iodict[label]={'outfile':[outfile,line]}
+            #self.iodict[label]={'outfile':[outfile,line]}
+            self.iodictout[label].append( (outfile,line) )
         if infile: 
             self.inputs.append(infile)
-            self.iodict[label]={'infile':[infile,line]}
+            #self.iodict[label]={'infile':[infile,line]}
+            self.iodictin[label].append( (infile,line) )
 
     def once(self,cmd):
         '''remove cmd from Opt class, only present in PBS class
@@ -151,7 +156,6 @@ class PBS(object):
         opt= [ i for i in cflat if i != cmd]
         self.optpipe = deepcopy(opt)
     
-
     def testremote(self):
         '''/TestCmds/126L_AGTCAA_L006_R1_001.fastq_head  126L_AGTCAA_L006_R1_001.fastq_head_1000 
         '''
@@ -205,6 +209,14 @@ class PBS(object):
             else:
                 yield i 
 
+    def find2(self,list2, elem):
+        for row,l in enumerate(list2):
+            try:
+                col=l.index(elem)
+            except ValueError:
+                continue
+            return row,col
+        return False
     def writePBS(self, home='/export/home/gsingh6',local=None,test=False,opt=False):
         #if opt==True:
         #    commands=deepcopy(self.optpipe)
@@ -237,7 +249,26 @@ class PBS(object):
                 _PBSFILE     = home+'/pbsfiles/' + str(self.PBSFILE)
                 _LOGFILE     = '#PBS -o ' + ''.join([home,'/pbslog/',self.LOGFILE ])
         cflat=self.flatten(self.CMD)
-        ctemp=[ Template(c).substitute(self.var) for c in cflat ]
+        #sub $inputs $outputs with <filename>
+        ctemp2=[]
+        for c in cflat:
+            cr = deepcopy(c)
+            if '$inputs' in cr:
+                if self.find2(self.CMD,cr):
+                    idx0,idx1 = self.find2(self.CMD, cr) #get i,j index of command in CMD
+                    label = self.Labels[idx0]
+                    infile = self.iodictin[label][idx1][0]
+                    cr = cr.replace('$inputs',infile)
+            if '$outputs' in cr:
+                #search on old c incase cr is now substituted
+                if self.find2(self.CMD,c): 
+                    idx0,idx1 = self.find2(self.CMD, c)
+                    label = self.Labels[idx0]
+                    outfile = self.iodictout[label][idx1][0]
+                    cr = cr.replace('$outputs', outfile)
+            ctemp2.append(cr)
+        #sub all other values such as $CPU $PBS etc    
+        ctemp=[ Template(c).substitute(self.var) for c in ctemp2 ]
         _CMD='\n'.join(ctemp)
         pbslist = [_HASHBANG,_JOBNAME,_QUEUE,_NODES,_WALL,_OUTPUT,_LOGFILE,_OUTPUTDIR,_SRCBASHRC,_CMD]
         if not _OUTPUTDIR:
@@ -267,26 +298,42 @@ class PBS(object):
         #cmds
         for i in xrange(0,len(flatlist)-1):
             C.add_edge( flatlist[i], flatlist[i+1] )
+        c1=[n for n in C.nodes()]
+        G1 = C.subgraph(nbunch=c1, name="cluster1",\
+                color='lightgrey', label=self.name)
         #io
-        for label,v in self.iodict.items():
-            for iokey,(iofile,line) in v.items():
+        c2=[]
+        for label,v in self.iodictin.items():
+            for (iofile,line) in v:
                 cmd = self.graphdict[label]
                 if isinstance(cmd,Iterable) and not isinstance(cmd,basestring):
                     cmd=cmd[line]
                 node = C.get_node( cmd )
-                print 'node', node, iokey
-                #output/right
-                if iokey=='outfile':
-                    C.add_edge( node, iofile, dir='forward' )
+                print 'node in', node
                 #input/left
-                if iokey=='infile':
-                    print 'infile', iokey
-                    C.add_edge( node, iofile, dir='back' )
-                print C.edges()
+                C.add_edge( node, iofile, dir='back' )
                 nodeio = C.get_node( iofile)
                 nodeio.attr['shape']='rect'
                 nodeio.attr['fontcolor']='green'
+                c2.append(nodeio)
                 print 'nodeio', nodeio
+        for label,v in self.iodictout.items():
+            for (iofile,line) in v:
+                cmd = self.graphdict[label]
+                if isinstance(cmd,Iterable) and not isinstance(cmd,basestring):
+                    cmd=cmd[line]
+                node = C.get_node( cmd )
+                print 'node in', node
+                #output/right
+                C.add_edge( node, iofile, dir='forward' )
+                nodeio = C.get_node( iofile)
+                nodeio.attr['shape']='rect'
+                nodeio.attr['fontcolor']='green'
+                c2.append(nodeio)
+        attributes={}
+        attributes.update(color='blue', label='I/O') 
+        G2 = C.subgraph(nbunch=c2,name="cluster2",**attributes)
+
         #labels
         for k,v in self.graphdict.items():
             nodek = C.get_node(k)
@@ -295,7 +342,7 @@ class PBS(object):
             nodek.attr['fontcolor']='red'
 
         C.draw(file+'.png',prog='dot')
-
+                
 
     def callPBS(self):
         commandQsub = 'qsub ' + str(self.CALLDIR) + '/' + str(self.PBSFILE)
