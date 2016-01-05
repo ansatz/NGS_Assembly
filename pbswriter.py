@@ -81,7 +81,7 @@ class Opt2(object):
 
 @universal
 class PBS(object):
-    def __init__(self, function_cmd, read_pair=None,\
+    def __init__(self, function_cmd=None, read_pair=None,\
                      QUEUENAME="cri", NODES=1, CPU=5, PBSFILE=None, WALL='24:00:00', JOBNAME=None, CALLDIR=None, OUTPUTDIR=None,\
                     LOGFILE=None,\
                     cowref='/export/home/gsingh6/cow/cow.gtf.gz', cowgtf=None,\

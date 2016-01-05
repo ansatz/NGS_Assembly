@@ -2,6 +2,7 @@ from score import *
 from pbswriter import *
 from unidecorator import *
 import os
+from optpipe import *
 
 @PBS
 def twobit():
@@ -87,7 +88,6 @@ test.io(outfile='cmdrunnerout', label='label2', line=1)
 test.writePBS(home='/home/solver/NGS_Assembly')
 #test.once('testc')
 
-exit(0)
 @PBS
 def detonate():
     '''http://deweylab.biostat.wisc.edu/detonate/vignette.html
@@ -127,16 +127,13 @@ def detonate():
     
     return [(L0,u0), (L1,[u1]), (L2,[c3]), (L4,[u5,u6]), (L8,[u9,u10,c11]), (L9,[u13,u14,c15]) ]
 
-detonate()  
-detonate.once('rsem-eval-estimate-transcript-length-distribution $cow $output')
-detonate.writePBS(home='/home/solver/NGS_Assembly')
+#detonate()  
+#detonate.once('rsem-eval-estimate-transcript-length-distribution $cow $output')
+#detonate.writePBS(home='/home/solver/NGS_Assembly')
 #detonate.io(infile='cow.txt')
 #detonate.testremote()  
-exit(0)
  
 #http://informatics.fas.harvard.edu/rna-seq-data-analysis-2/
-#
-#@parallel
 #@PBS
 #def trinity():
 #    '''
@@ -224,13 +221,13 @@ def blasthomology():
 
 #hmm search
 
+
 @PBS
 def debruijn():
     '''http://trinityrnaseq.sourceforge.net/advanced_trinity_guide.html#Butterfly_reconstruction
     '''
     pass
 
-#@parallel
 @PBS
 def star():
     s='star'
@@ -244,19 +241,6 @@ def khmer():
      '''
     pass
 
-#@Score
-#def contigdistribution(lens,mapPercent):
-#    pass
-#
-#@Score
-#def homology(blastdb):
-#    pass
-#
-#@Score
-#def codingseq(hmmsec):
-#    pass
-#
-#@Score(input='Trinity.fasta', output=['$sample.sam','$sample.bam','$sample_htseq_counts.txt'])
 
 @PBS
 def chado():
@@ -298,11 +282,11 @@ def chado():
 4.optree
 5.groups synthetic
 '''
-Optpipe = Opt(pairs,Scoring)
-print Optpipe.__repr__ # print rounds, graphviz_stats, 
+Optpipe = Opt()
+Optpipe.run(DATADIR='/home/solver/NGS_Assembly/readpairs')
+#print Optpipe.__repr__ # print rounds, graphviz_stats, 
 
-
-Optpipe.run()
+exit(0)
 Optpipe.test()
 Optpipe.html(minutes=15)
 
@@ -399,3 +383,18 @@ def testpbs():
     a='hola'
     return [c,a]
 testpbs()
+
+
+#@Score
+#def contigdistribution(lens,mapPercent):
+#    pass
+#
+#@Score
+#def homology(blastdb):
+#    pass
+#
+#@Score
+#def codingseq(hmmsec):
+#    pass
+#
+#@Score(input='Trinity.fasta', output=['$sample.sam','$sample.bam','$sample_htseq_counts.txt'])
