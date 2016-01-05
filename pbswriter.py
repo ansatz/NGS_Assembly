@@ -19,7 +19,7 @@ from copy import deepcopy
  #           scoretype=['N50','isoform'],
   #          genometype=['cow','deer'])
         
-class Opt(object):
+class Opt2(object):
     #over all files
     GlobalRange = dict(kmer=[],trim=[],qualtreshold=[])
     Ranges = dict(kmer=[1,30],trim=[1,10],qualthreshold=[70,95])
@@ -41,7 +41,8 @@ class Opt(object):
             serve an html file of graph, update ever X minutes
         '''
         pass
-        
+
+
     def optTree(self, branch=None, range=[1,15], theta='kmer'):
         '''return score value 
            theta is parameters, either kmer or quality
@@ -76,7 +77,6 @@ class Opt(object):
         pass
     def optround(self):
         pass
-
 
 
 @universal
@@ -299,8 +299,14 @@ class PBS(object):
         for i in xrange(0,len(flatlist)-1):
             C.add_edge( flatlist[i], flatlist[i+1] )
         c1=[n for n in C.nodes()]
-        G1 = C.subgraph(nbunch=c1, name="cluster1",\
-                color='lightgrey', label=self.name)
+        G1 = C.subgraph(nbunch=c1,
+                        name="cluster1",
+                        color='lightgrey', 
+                        label=self.QUEUENAME.upper()+' '+ 
+                            ':'.join(['nodes=',str(self.NODES),
+                                    'cpu=',str(self.CPU),
+                                    'walltime=',str(self.WALL)])
+                        )
         #io
         c2=[]
         for label,v in self.iodictin.items():
@@ -331,7 +337,7 @@ class PBS(object):
                 nodeio.attr['fontcolor']='green'
                 c2.append(nodeio)
         attributes={}
-        attributes.update(color='blue', label='I/O') 
+        attributes.update(color='lightgrey', label='I/O') 
         G2 = C.subgraph(nbunch=c2,name="cluster2",**attributes)
 
         #labels
